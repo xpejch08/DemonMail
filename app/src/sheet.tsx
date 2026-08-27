@@ -14,6 +14,7 @@ const COLUMN_META: Record<string, { role: string; label: () => string }> = {
   ThreadList: { role: 'region', label: () => localized('Thread list') },
   MessageList: { role: 'region', label: () => localized('Messages') },
   MessageListSidebar: { role: 'complementary', label: () => localized('Contact panel') },
+  Calendar: { role: 'region', label: () => localized('Calendar') },
 };
 
 interface SheetLocation {

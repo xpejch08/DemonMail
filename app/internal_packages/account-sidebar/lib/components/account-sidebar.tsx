@@ -1,4 +1,5 @@
 import React from 'react';
+import { ipcRenderer } from 'electron';
 import { localized, Utils, DOMUtils, Account, AccountStore } from 'mailspring-exports';
 import { OutlineView, ScrollRegion, Flexbox } from 'mailspring-component-kit';
 import AccountSwitcher from './account-switcher';
@@ -74,6 +75,13 @@ export default class AccountSidebar extends React.Component<
             {this._renderUserSections(userSections)}
           </nav>
         </ScrollRegion>
+        <button
+          type="button"
+          className="account-sidebar-calendar-btn"
+          onClick={() => ipcRenderer.send('command', 'application:show-calendar', {})}
+        >
+          {localized('Calendar')}
+        </button>
       </Flexbox>
     );
   }

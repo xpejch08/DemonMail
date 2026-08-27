@@ -21,6 +21,7 @@ interface SheetSet {
   Preferences: SheetDeclaration;
   Activity: SheetDeclaration;
   Drafts: SheetDeclaration;
+  Calendar: SheetDeclaration;
   Main: SheetDeclaration;
   Threads: SheetDeclaration;
   Global: SheetDeclaration;
