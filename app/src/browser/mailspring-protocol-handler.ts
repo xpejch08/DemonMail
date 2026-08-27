@@ -46,7 +46,7 @@ export default class MailspringProtocolHandler {
   registerProtocol() {
     const scheme = 'mailspring';
 
-    protocol.handle(scheme, request => {
+    protocol.handle(scheme, (request) => {
       const relativePath = this.relativePathFromRequest(request.url);
 
       let filePath = null;
@@ -86,7 +86,7 @@ export default class MailspringProtocolHandler {
     try {
       const parsed = new URL(requestUrl);
       const parts = [parsed.hostname, ...parsed.pathname.split('/')].filter(Boolean);
-      return path.normalize(parts.map(p => decodeURIComponent(p)).join(path.sep));
+      return path.normalize(parts.map((p) => decodeURIComponent(p)).join(path.sep));
     } catch {
       return path.normalize(requestUrl.replace(/^mailspring:/i, '')).replace(/^[/\\]+/, '');
     }
