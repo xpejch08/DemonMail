@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- App-icon plate. Fills the frame so 16px still reads. -->
+  <rect x="2" y="2" width="252" height="252" rx="48" fill="#14061C" stroke="#C4124A" stroke-width="12"/>
+
+  <!-- Horns: fat strokes into the top corners. -->
+  <path d="M84 96C52 56 30 28 16 12" fill="none" stroke="#D41858" stroke-width="28" stroke-linecap="round"/>
+  <path d="M172 96C204 56 226 28 240 12" fill="none" stroke="#D41858" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- Envelope. -->
+  <rect x="32" y="68" width="192" height="160" rx="28" fill="#1A0B2E" stroke="#E02070" stroke-width="8"/>
+
+  <!-- Flap = face. -->
+  <polygon points="48,68 208,68 128,156" fill="#2A1238" stroke="#E02070" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- Eyes. -->
+  <ellipse cx="100" cy="110" rx="28" ry="16" fill="#FFE8F4" stroke="#E02070" stroke-width="5"/>
+  <ellipse cx="156" cy="110" rx="28" ry="16" fill="#FFE8F4" stroke="#E02070" stroke-width="5"/>
+
+  <!-- Folds. -->
+  <path d="M48 172 128 232 208 172" fill="none" stroke="#E02070" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
