@@ -389,6 +389,40 @@ export function buildO365AuthURL() {
   })}`;
 }
 
+type ConnectionTestError = {
+  message?: string;
+  errorService?: string;
+  rawLog?: string;
+};
+
+function smtpConnectionAttempts(account: Account) {
+  const current = {
+    smtp_port: Number(account.settings.smtp_port),
+    smtp_security: account.settings.smtp_security,
+  };
+  if (!(account.settings.smtp_host || '').includes('gmail.com')) {
+    return [current];
+  }
+  const alternate =
+    current.smtp_port === 465
+      ? { smtp_port: 587, smtp_security: 'STARTTLS' as const }
+      : { smtp_port: 465, smtp_security: 'SSL / TLS' as const };
+  return [current, alternate];
+}
+
+function isSmtpConnectionError(err: ConnectionTestError) {
+  return (
+    err?.errorService === 'smtp' ||
+    /\(SMTP\)/i.test(err?.message || '') ||
+    /MAILSMTP_ERROR_STREAM/.test(err?.rawLog || '')
+  );
+}
+
+function imapOkSmtpStreamFailed(err: ConnectionTestError) {
+  const log = err?.rawLog || '';
+  return /login ok/i.test(log) && /MAILSMTP_ERROR_STREAM/.test(log);
+}
+
 export async function finalizeAndValidateAccount(account: Account) {
   if (account.settings.imap_host) {
     account.settings.imap_host = account.settings.imap_host.trim();
@@ -414,11 +448,39 @@ export async function finalizeAndValidateAccount(account: Account) {
     account.label = account.emailAddress;
   }
 
-  // Test connections to IMAP and SMTP
+  // Test IMAP and SMTP. Gmail offers both 587/STARTTLS and 465/SSL; libetpan
+  // STREAM errors (no SMTP banner) often hit only one port, so try the other.
   const proc = new MailsyncProcess(AppEnv.getLoadSettings());
   proc.identity = IdentityStore.identity();
-  proc.account = account;
-  await proc.test();
+  const smtpAttempts = smtpConnectionAttempts(account);
+  let lastError: Error | null = null;
+  for (const smtp of smtpAttempts) {
+    account.settings.smtp_port = smtp.smtp_port;
+    account.settings.smtp_security = smtp.smtp_security;
+    proc.account = account;
+    try {
+      await proc.test();
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err as Error;
+      if (!isSmtpConnectionError(err as ConnectionTestError)) {
+        throw err;
+      }
+    }
+  }
+  if (lastError) {
+    if (imapOkSmtpStreamFailed(lastError as ConnectionTestError)) {
+      // IMAP authed; SMTP never got a banner (Avast Mail Shield / libetpan STREAM).
+      // Save the account so mail can sync. Sending stays broken until SMTP works.
+      console.warn(
+        `SMTP test failed after IMAP login; adding ${account.emailAddress} anyway:`,
+        lastError.message
+      );
+    } else {
+      throw lastError;
+    }
+  }
 
   // Record the date of successful auth
   account.authedAt = new Date();
