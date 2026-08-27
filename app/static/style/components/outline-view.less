@@ -212,11 +212,11 @@ body.theme-ui-demon .outline-view {
     border-radius: 10px;
 
     &:hover:not(:has(.item.selected)) {
-      background: fade(@accent-primary, 12%);
+      background: color-mix(in srgb, @accent-primary 12%, transparent);
     }
 
     &:has(.item.selected) {
-      background: fade(@accent-primary, 28%);
+      background: color-mix(in srgb, @accent-primary 28%, transparent);
     }
   }
 

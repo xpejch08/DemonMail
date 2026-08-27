@@ -572,14 +572,14 @@ body.theme-ui-demon .draft-list {
     border-radius: 8px;
 
     &:hover {
-      background: fade(@accent-primary, 12%);
+      background: color-mix(in srgb, @accent-primary 12%, transparent);
     }
   }
 
   .unread:not(.focused):not(.selected) {
     background-color: transparent;
     &:hover {
-      background: fade(@accent-primary, 12%);
+      background: color-mix(in srgb, @accent-primary 12%, transparent);
     }
   }
 
@@ -589,7 +589,7 @@ body.theme-ui-demon .draft-list {
 
   .list-item.selected,
   .list-item.focused {
-    background: fade(@accent-primary, 28%);
+    background: color-mix(in srgb, @accent-primary 28%, transparent);
     border-bottom: none;
     border-radius: 8px;
   }
@@ -606,7 +606,7 @@ body.theme-ui-demon .draft-list {
 }
 
 body.theme-ui-demon .thread-list.handler-split .list-item.selected {
-  background: fade(@accent-primary, 32%);
+  background: color-mix(in srgb, @accent-primary 32%, transparent);
   border-radius: 8px;
 }
 
