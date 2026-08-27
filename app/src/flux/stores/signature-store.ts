@@ -1,6 +1,5 @@
-import { localized, Actions, AccountStore } from 'mailspring-exports';
+import { Actions } from 'mailspring-exports';
 import MailspringStore from 'mailspring-store';
-import _ from 'underscore';
 
 export interface IDefaultSignatures {
   [accountId: string]: string;
@@ -36,27 +35,12 @@ class _SignatureStore extends MailspringStore {
     this.signatures = AppEnv.config.get(`signatures`);
     this.defaultSignatures = AppEnv.config.get(`defaultSignatures`) || {};
 
-    // If the user has no signatures (after a clean install or upgrade from 1.0.9),
-    // create a default one for them and apply it to all their accounts.
+    // Fork: never seed a "Sent from Mailspring" promo signature.
     if (!this.signatures) {
-      const sentFrom = localized('Sent from Mailspring, the best free email app for work');
-      this.signatures = {
-        initial: {
-          id: 'initial',
-          title: localized('Default'),
-          body: `<div><div>${sentFrom.replace(
-            'Mailspring',
-            '<a href="https://getmailspring.com/">Mailspring</a>'
-          )}</div></div>`,
-          data: {
-            title: sentFrom,
-            templateName: 'SignatureB',
-          },
-        },
-      };
-      AccountStore.accounts().forEach((a) => {
-        this.defaultSignatures[a.emailAddress] = 'initial';
-      });
+      this.signatures = {};
+      this._saveSignatures();
+    } else {
+      this._removeStockPromoSignatures();
     }
 
     // migrate signatures that didn't have a `data` property
@@ -104,6 +88,32 @@ class _SignatureStore extends MailspringStore {
   signatureForEmail = (email: string) => {
     return this.signatures[this.defaultSignatures[email]];
   };
+
+  _isStockPromoSignature(sig: ISignature) {
+    const body = sig?.body || '';
+    return body.includes('getmailspring.com') && /Sent from /i.test(body.replace(/<[^>]+>/g, ' '));
+  }
+
+  _removeStockPromoSignatures() {
+    const ids = Object.keys(this.signatures).filter((id) =>
+      this._isStockPromoSignature(this.signatures[id])
+    );
+    if (ids.length === 0) {
+      return;
+    }
+    this.signatures = { ...this.signatures };
+    for (const id of ids) {
+      delete this.signatures[id];
+    }
+    const idSet = new Set(ids);
+    for (const email of Object.keys(this.defaultSignatures)) {
+      if (idSet.has(this.defaultSignatures[email])) {
+        this.defaultSignatures[email] = null;
+      }
+    }
+    this._saveSignatures();
+    this._saveDefaultSignatures();
+  }
 
   _saveSignatures() {
     AppEnv.config.set(`signatures`, this.signatures);
