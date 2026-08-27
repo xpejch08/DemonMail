@@ -11,7 +11,7 @@ import PreferencesMcpAccounts from './preferences-mcp-accounts';
 import PreferencesMcpAudit from './preferences-mcp-audit';
 
 const execFileAsync = promisify(execFile);
-const CLAUDE_CODE_MCP_NAME = 'mailspring-mcp';
+const CLAUDE_CODE_MCP_NAME = 'demonmail';
 
 interface State {
   enabled: boolean;
@@ -24,6 +24,7 @@ interface State {
   claudeStatus: string | null;
   codexStatus: string | null;
   claudeCodeStatus: string | null;
+  cursorStatus: string | null;
   // Set true once the user has successfully added Mailspring to any AI tool;
   // reveals the "Try It!" example prompt beneath the Quick Setup buttons.
   tryItVisible: boolean;
@@ -69,6 +70,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
       claudeStatus: null,
       codexStatus: null,
       claudeCodeStatus: null,
+      cursorStatus: null,
     };
   }
 
@@ -220,8 +222,20 @@ export default class PreferencesMcp extends React.Component<Record<string, never
   async _findClaudeBinary(): Promise<string | null> {
     try {
       if (process.platform === 'win32') {
+        // `where` prints every match, and npm installs both an extensionless
+        // shell script and a .cmd shim. Windows can only CreateProcess the
+        // shim, so `where`'s first line (the script) fails with spawn ENOENT.
+        // Prefer a candidate with a real executable extension.
         const { stdout } = await execFileAsync('where', ['claude']);
-        return stdout.split(/\r?\n/)[0].trim() || null;
+        const candidates = stdout
+          .split(String.fromCharCode(10))
+          .map((l) => l.trim())
+          .filter(Boolean);
+        const runnable = candidates.find((c) => {
+          const lower = c.toLowerCase();
+          return lower.endsWith('.cmd') || lower.endsWith('.exe') || lower.endsWith('.bat');
+        });
+        return runnable || candidates[0] || null;
       }
       const shell = process.env.SHELL || '/bin/zsh';
       const { stdout } = await execFileAsync(shell, ['-lic', 'command -v claude']);
@@ -241,6 +255,15 @@ export default class PreferencesMcp extends React.Component<Record<string, never
     } catch {
       return null;
     }
+  }
+
+  /* Node 20.12+ refuses to spawn .cmd/.bat files without a shell
+  (CVE-2024-27980), and npm's global `claude` on Windows is exactly a .cmd shim -
+  so a plain execFile fails with spawn EINVAL. Every argument we pass is
+  generated here (fixed flags, a loopback URL, a UUID token), so there is no
+  free-text that shell quoting has to protect against. */
+  _runClaude(claudeBin: string, args: string[]) {
+    return execFileAsync(claudeBin, args, { shell: process.platform === 'win32' });
   }
 
   _onAddToClaudeCode = async () => {
@@ -263,7 +286,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
       // name, so remove any prior registration first (ignoring errors if
       // none exists) — this keeps the button safe to re-run after the port
       // or token changes.
-      await execFileAsync(claudeBin, [
+      await this._runClaude(claudeBin, [
         'mcp',
         'remove',
         CLAUDE_CODE_MCP_NAME,
@@ -271,7 +294,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
         'user',
       ]).catch(() => {});
 
-      await execFileAsync(claudeBin, [
+      await this._runClaude(claudeBin, [
         'mcp',
         'add',
         CLAUDE_CODE_MCP_NAME,
@@ -292,6 +315,35 @@ export default class PreferencesMcp extends React.Component<Record<string, never
     }
   };
 
+  _onAddToCursor = () => {
+    try {
+      const configPath = path.join(os.homedir(), '.cursor', 'mcp.json');
+      let config: { mcpServers?: Record<string, unknown> } = {};
+      try {
+        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      } catch {
+        if (fs.existsSync(configPath)) {
+          throw new Error('Cursor mcp.json is not valid JSON');
+        }
+      }
+
+      if (!config.mcpServers) config.mcpServers = {};
+      config.mcpServers.demonmail = {
+        url: `http://127.0.0.1:${this.state.port}/mcp`,
+        headers: { Authorization: `Bearer ${this.state.token}` },
+      };
+
+      fs.mkdirSync(path.dirname(configPath), { recursive: true });
+      fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+
+      this.setState({ cursorStatus: localized('Added!'), tryItVisible: true });
+      setTimeout(() => this.setState({ cursorStatus: null }), 3000);
+    } catch (err) {
+      this.setState({ cursorStatus: `Error: ${(err as Error).message}` });
+      setTimeout(() => this.setState({ cursorStatus: null }), 5000);
+    }
+  };
+
   render() {
     const {
       enabled,
@@ -304,10 +356,11 @@ export default class PreferencesMcp extends React.Component<Record<string, never
       claudeStatus,
       codexStatus,
       claudeCodeStatus,
+      cursorStatus,
       tryItVisible,
     } = this.state;
 
-    const setupError = [claudeStatus, codexStatus, claudeCodeStatus].find(
+    const setupError = [claudeStatus, codexStatus, claudeCodeStatus, cursorStatus].find(
       (s) => s && s.startsWith('Error')
     );
 
@@ -317,7 +370,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
           <h6>{localized('MCP Server')}</h6>
           <p className="mcp-description">
             {localized(
-              'The MCP server lets AI assistants (like Claude Desktop) read and interact with your email.'
+              'The MCP server lets AI assistants (like Claude Desktop) read and interact with your email and calendars.'
             )}
           </p>
           <div className="mcp-toggle-row">
@@ -344,7 +397,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
                   <h6>{localized('Quick Setup')}</h6>
                   <p className="mcp-description">
                     {localized(
-                      "Add Mailspring to your AI tools with one click. This writes the connection details to each tool's config file."
+                      "Add DemonMail to your AI tools with one click. This writes the connection details to each tool's config file."
                     )}
                   </p>
                   <div className="mcp-quick-setup">
@@ -363,6 +416,11 @@ export default class PreferencesMcp extends React.Component<Record<string, never
                       claudeCodeStatus,
                       this._onAddToClaudeCode
                     )}
+                    {this._renderQuickSetupButton(
+                      localized('Add to Cursor'),
+                      cursorStatus,
+                      this._onAddToCursor
+                    )}
                   </div>
                   {setupError && <div className="mcp-error">{setupError}</div>}
                   {tryItVisible && (
@@ -370,7 +428,7 @@ export default class PreferencesMcp extends React.Component<Record<string, never
                       <h6>{localized('Try It!')}</h6>
                       <p className="mcp-description">
                         {localized(
-                          'Note: Restart Claude / ChatGPT and start a new chat, existing chats may not see the new connector.'
+                          'Note: Restart Claude / ChatGPT / Cursor and start a new chat, existing chats may not see the new connector.'
                         )}
                       </p>
 
