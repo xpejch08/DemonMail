@@ -62,7 +62,7 @@ class OnboardingStore extends MailspringStore {
       // Should only happen when the user has "signed out" of their Mailspring ID,
       // but already has accounts synced. Or is upgrading from a very old build.
       // We used to show "Welcome Back", but now just jump to sign in.
-      this._pageStack = ['authenticate'];
+      this._pageStack = ['account-choose'];
     } else {
       // Standard new user onboarding flow.
       this._pageStack = ['welcome'];
