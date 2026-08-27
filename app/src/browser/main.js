@@ -40,29 +40,38 @@ if (typeof process.setFdLimit === 'function') {
   process.setFdLimit(1024);
 }
 
-const setupConfigDir = args => {
-  let dirname = 'DemonMail';
-  if (args.devMode) {
-    dirname = 'DemonMail-dev';
+const pickSharedProfileDir = appData => {
+  const prod = path.join(appData, 'DemonMail');
+  const fromNpmStart = path.join(appData, 'DemonMail-dev');
+  // Keep using DemonMail-dev whenever it already has a profile so npm start
+  // and every packaged install open the same mailboxes. Never split on --dev.
+  if (fs.existsSync(path.join(fromNpmStart, 'config.json'))) {
+    return fromNpmStart;
   }
+  return prod;
+};
+
+const setupConfigDir = args => {
   if (args.specMode) {
-    dirname = 'DemonMail-spec';
+    const specPath = path.join(app.getPath('appData'), 'DemonMail-spec');
+    fs.mkdirSync(specPath, { recursive: true });
+    app.setPath('userData', specPath);
+    return specPath;
   }
 
-  // Check if a custom config dir was provided via --config-dir-path
-  let configDirPath = args.configDirPath || path.join(app.getPath('appData'), dirname);
+  // One mailbox for npm start and the packaged exe. Mailspring's --dev split
+  // kept testers off production data; this fork already has mail in
+  // DemonMail-dev from `npm start`, so the exe must open that same folder
+  // instead of an empty DemonMail profile.
+  let configDirPath =
+    args.configDirPath || pickSharedProfileDir(app.getPath('appData'));
 
   if (process.platform === 'linux' && process.env.SNAP) {
-    // for linux snap, use the sandbox directory that is persisted between snap revisions
     configDirPath = args.configDirPath || process.env.SNAP_USER_COMMON;
   }
 
-  // crete the directory
   fs.mkdirSync(configDirPath, { recursive: true });
-
-  // tell Electron to use this folder for local storage, etc. as well
   app.setPath('userData', configDirPath);
-
   return configDirPath;
 };
 
@@ -329,6 +338,13 @@ const start = () => {
   // Reference: https://www.electronjs.org/docs/latest/api/command-line-switches
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   app.commandLine.appendSwitch('js-flags', '--harmony');
+  // Packaged Windows: the GPU process dies with STATUS_BREAKPOINT
+  // (exit -2147483645) six times, then Chromium aborts ("GPU process isn't
+  // usable"). Dev `npm start` is fine — unpackaged Electron helper layout
+  // differs. --disable-gpu-sandbox keeps the window alive; --disable-gpu does not.
+  if (process.platform === 'win32') {
+    app.commandLine.appendSwitch('disable-gpu-sandbox');
+  }
 
   const options = parseCommandLine(process.argv);
   global.errorLogger = setupErrorLogger(options);
