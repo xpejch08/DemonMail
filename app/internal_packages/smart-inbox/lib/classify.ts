@@ -5,6 +5,8 @@ export interface SenderLookup {
   lookup(email: string): SmartInboxBucket | null;
 }
 
+export type ClassifyHint = 'newsletter' | 'notification' | null;
+
 export interface ClassifyResult {
   email: string;
   name: string;
@@ -12,6 +14,7 @@ export interface ClassifyResult {
   rememberEmail: boolean;
   rememberDomain: boolean;
   pending: boolean;
+  hint: ClassifyHint;
 }
 
 export function domainKey(email: string) {
@@ -60,30 +63,16 @@ export function classifyMessage(message: Message, lookup: SenderLookup): Classif
       rememberEmail: false,
       rememberDomain: false,
       pending: false,
+      hint: null,
     };
   }
 
-  if (message.listUnsubscribe || message.listUnsubscribePost) {
-    return {
-      email,
-      name: from.name || email,
-      bucket: 'newsletter',
-      rememberEmail: true,
-      rememberDomain: true,
-      pending: false,
-    };
-  }
-
-  if (Utils.likelyNonHumanEmail(email)) {
-    return {
-      email,
-      name: from.name || email,
-      bucket: 'notification',
-      rememberEmail: true,
-      rememberDomain: false,
-      pending: false,
-    };
-  }
+  const hint: ClassifyHint =
+    message.listUnsubscribe || message.listUnsubscribePost
+      ? 'newsletter'
+      : Utils.likelyNonHumanEmail(email)
+        ? 'notification'
+        : null;
 
   return {
     email,
@@ -92,5 +81,6 @@ export function classifyMessage(message: Message, lookup: SenderLookup): Classif
     rememberEmail: false,
     rememberDomain: false,
     pending: true,
+    hint,
   };
 }

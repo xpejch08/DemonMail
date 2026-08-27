@@ -1,16 +1,31 @@
 import React from 'react';
 import { localized } from 'mailspring-exports';
-import { Notification } from 'mailspring-component-kit';
 import { senderCategoryStore, PendingSender } from './sender-category-store';
-import { stampThreads } from './stamp';
-import { DatabaseStore, Thread } from 'mailspring-exports';
 import { SmartInboxBucket } from '../../../src/flux/models/smart-inbox';
+
+const CHOICES: { bucket: SmartInboxBucket; label: () => string; domain: boolean }[] = [
+  { bucket: 'wanted', label: () => localized('Wanted'), domain: false },
+  { bucket: 'newsletter', label: () => localized('Newsletter'), domain: true },
+  { bucket: 'notification', label: () => localized('Notification'), domain: false },
+  { bucket: 'hidden', label: () => localized('Hide'), domain: true },
+];
+
+function hintCopy(pending: PendingSender) {
+  if (pending.hint === 'newsletter') {
+    return localized('Looks like a newsletter. Where should mail from this sender go?');
+  }
+  if (pending.hint === 'notification') {
+    return localized('Looks automated. Where should mail from this sender go?');
+  }
+  return localized('New sender. File this person:');
+}
 
 export default class NewSenderNotification extends React.Component<
   Record<string, unknown>,
   { pending: PendingSender[] }
 > {
   static displayName = 'NewSenderNotification';
+  static containerRequired = false;
 
   unlisten: () => void;
 
@@ -29,16 +44,12 @@ export default class NewSenderNotification extends React.Component<
     this.unlisten();
   }
 
-  _onChoose = async (bucket: SmartInboxBucket, rememberDomain: boolean) => {
+  _onChoose = (bucket: SmartInboxBucket, rememberDomain: boolean) => {
     const current = this.state.pending[0];
     if (!current) {
       return;
     }
     senderCategoryStore.remember(current.email, bucket, { domain: rememberDomain });
-    const thread = await DatabaseStore.find<Thread>(Thread, current.threadId);
-    if (thread) {
-      stampThreads([thread], bucket);
-    }
   };
 
   render() {
@@ -50,30 +61,38 @@ export default class NewSenderNotification extends React.Component<
       current.name && current.name !== current.email
         ? `${current.name} (${current.email})`
         : current.email;
+    const rest = this.state.pending.length - 1;
+
     return (
-      <Notification
-        priority="3"
-        icon="volstead-defaultclient.png"
-        title={localized('%@ — keep in Inbox?', who)}
-        actions={[
-          {
-            label: localized('Wanted'),
-            fn: () => this._onChoose('wanted', false),
-          },
-          {
-            label: localized('Newsletter'),
-            fn: () => this._onChoose('newsletter', true),
-          },
-          {
-            label: localized('Notification'),
-            fn: () => this._onChoose('notification', false),
-          },
-          {
-            label: localized('Hide'),
-            fn: () => this._onChoose('hidden', true),
-          },
-        ]}
-      />
+      <div
+        className="smart-inbox-sender-card"
+        role="region"
+        aria-label={localized('File new sender')}
+      >
+        <div className="smart-inbox-sender-card-copy">
+          <div className="smart-inbox-sender-card-hint">{hintCopy(current)}</div>
+          <div className="smart-inbox-sender-card-who">{who}</div>
+          {rest > 0 ? (
+            <div className="smart-inbox-sender-card-rest">
+              {localized('%@ more new senders waiting', rest)}
+            </div>
+          ) : null}
+        </div>
+        <div className="smart-inbox-sender-card-actions">
+          {CHOICES.map((choice) => (
+            <button
+              key={choice.bucket}
+              type="button"
+              className={`smart-inbox-sender-card-btn${
+                current.hint === choice.bucket ? ' suggested' : ''
+              }`}
+              onClick={() => this._onChoose(choice.bucket, choice.domain)}
+            >
+              {choice.label()}
+            </button>
+          ))}
+        </div>
+      </div>
     );
   }
 }
