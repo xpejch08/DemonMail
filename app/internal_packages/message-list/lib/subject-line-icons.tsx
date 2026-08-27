@@ -40,7 +40,10 @@ class EmailRenderModeToggle extends React.Component<Record<string, never>, { mod
     const mode = this.state.mode;
     if (mode === 'dark') return true;
     if (mode === 'light') return false;
-    return document.body.classList.contains('theme-ui-dark');
+    return (
+      document.body.classList.contains('theme-ui-dark') ||
+      document.body.classList.contains('theme-ui-demon')
+    );
   };
 
   _onToggle = () => {

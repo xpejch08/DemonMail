@@ -1,0 +1,191 @@
+@import 'base/ui-variables';
+
+// Space bounty-hunter hull: void black, hot nebula magenta, devil-red warning lights.
+@demon-void: #0a0414;
+@demon-nebula: #1a0833;
+@demon-hull: #251040;
+@demon-panel: #2e1450;
+@demon-plasma: #d24bff;
+@demon-laser: #ff2d4a;
+@demon-text: #f6edff;
+
+@gray-base: #ffffff;
+@gray-darker: darken(@gray-base, 13.5%);
+@gray-dark: darken(@gray-base, 20%);
+@gray: darken(@gray-base, 33.5%);
+@gray-light: darken(@gray-base, 46.7%);
+@gray-lighter: darken(@gray-base, 92.5%);
+@white: @demon-void;
+
+// Hardcoded plasma — do not follow OS accent (Windows green would wipe the theme).
+@accent-primary: @demon-plasma;
+@accent-primary-dark: color-mix(in srgb, @demon-plasma, black 12%);
+
+@background-primary: @demon-hull;
+@background-off-primary: @demon-hull;
+@background-secondary: @demon-void;
+@background-tertiary: #8a3dff;
+
+@background-color-info: @demon-plasma;
+@background-color-error: @demon-laser;
+@background-color-warning: @demon-laser;
+@menu-item-color-hover: fade(@demon-plasma, 16%);
+@menu-item-color-selected: @demon-plasma;
+
+@color-danger: @demon-laser;
+@color-error: @demon-laser;
+@btn-danger-bg-color: @demon-laser;
+
+@border-color-primary: lighten(@demon-hull, 8%);
+@border-color-secondary: lighten(@demon-void, 10%);
+@border-color-tertiary: lighten(@background-tertiary, 10%);
+@border-color-divider: fade(@demon-plasma, 12%);
+
+@text-color: @demon-text;
+@text-color-subtle: fadeout(@text-color, 20%);
+@text-color-very-subtle: fadeout(@text-color, 42%);
+@text-color-inverse: white;
+@text-color-inverse-subtle: fadeout(@text-color-inverse, 20%);
+@text-color-inverse-very-subtle: fadeout(@text-color-inverse, 50%);
+@text-color-heading: #fff;
+@component-active-bg: @text-color;
+@component-active-color: @demon-plasma;
+
+@text-color-link: @demon-plasma;
+@text-color-link-hover: lighten(@demon-plasma, 8%);
+@text-color-link-active: lighten(@demon-plasma, 8%);
+
+@btn-default-bg-color: lighten(@demon-hull, 5%);
+@btn-border-color: fadeout(@text-color, 65%);
+@dropdown-default-bg-color: @demon-panel;
+
+@input-bg: @demon-panel;
+@input-border: fade(@demon-plasma, 22%);
+
+@list-bg: @demon-hull;
+@list-border: fade(@demon-plasma, 10%);
+@list-hover-bg: lighten(@demon-hull, 4%);
+@list-selected-color: @text-color;
+@list-selected-bg: color-mix(in srgb, @demon-plasma 22%, @demon-hull);
+@list-selected-border: color-mix(in srgb, @demon-plasma 45%, @demon-hull);
+@list-focused-color: @text-color;
+@list-focused-bg: color-mix(in srgb, @demon-plasma 28%, @demon-hull);
+@list-focused-border: @demon-plasma;
+
+@toolbar-background-color: @demon-void;
+@panel-background-color: @demon-nebula;
+@source-list-bg: @demon-nebula;
+@source-list-active-bg: fade(@demon-plasma, 32%);
+@source-list-active-color: @demon-text;
+
+@spacing-standard: 16px;
+@border-radius-base: 8px;
+@border-radius-large: 12px;
+@border-radius-small: 6px;
+@component-border-radius: 8px;
+
+.thread-icon:not(.thread-icon-unread):not(.thread-icon-star) {
+  filter: invert(100%);
+}
+img.content-dark {
+  filter: invert(100%);
+}
+img.content-light {
+  filter: invert(100%);
+}
+
+.mail-label {
+  filter: contrast(110%) brightness(85%);
+}
+
+#message-list .message-item-wrap .message-item-white-wrap {
+  background: @demon-panel;
+  box-shadow: 0 0 0 1px fade(@demon-plasma, 10%), 0 8px 24px fade(@demon-void, 55%);
+}
+
+.thread-list .list-item:not(.unread):not(.selected):not(.focused) {
+  color: fade(@demon-text, 72%);
+}
+
+.thread-list .list-item.thread-list-reminder-item {
+  background-color: fade(@demon-plasma, 14%);
+}
+
+.send-reminders-header {
+  color: @demon-plasma;
+  background: fade(@demon-plasma, 14%);
+  border-bottom: 1px solid fade(@demon-plasma, 28%);
+}
+
+.sheet-toolbar {
+  box-shadow: none;
+  border-bottom: 1px solid fade(@demon-plasma, 10%);
+}
+.sheet-toolbar-container {
+  background: @toolbar-background-color;
+}
+body.is-blurred .sheet-toolbar-container {
+  background: @demon-void;
+}
+
+// Cockpit wash: nebula glow + sparse stars. Theme-scoped so Light/Dark stay stock.
+body.theme-ui-demon {
+  background-color: @demon-void;
+}
+
+body.theme-ui-demon .account-sidebar {
+  background-color: @demon-nebula;
+  background-image: radial-gradient(
+      ellipse 90% 55% at 0% -10%,
+      fade(@demon-plasma, 32%),
+      transparent 55%
+    ),
+    radial-gradient(ellipse 70% 45% at 110% 110%, fade(@demon-laser, 18%), transparent 50%),
+    radial-gradient(1px 1px at 12% 18%, fade(@demon-text, 35%), transparent),
+    radial-gradient(1px 1px at 78% 22%, fade(@demon-plasma, 40%), transparent),
+    radial-gradient(1px 1px at 42% 64%, fade(@demon-text, 25%), transparent),
+    radial-gradient(1px 1px at 88% 71%, fade(@demon-text, 20%), transparent),
+    radial-gradient(1px 1px at 23% 88%, fade(@demon-plasma, 30%), transparent),
+    radial-gradient(1px 1px at 61% 41%, fade(@demon-text, 18%), transparent);
+}
+
+// Hairline box-shadow badges: faint text on a pale rim. Fill them instead.
+body.theme-ui-demon .outline-view .item .item-count-box {
+  color: @demon-void;
+  background: @demon-laser;
+  box-shadow: 0 0 8px fade(@demon-laser, 55%);
+  border-radius: 8px;
+  min-width: 18px;
+  padding: 0 6px;
+}
+
+body.theme-ui-demon .outline-view .item .item-count-box.alt-count {
+  color: @demon-void;
+  background: @demon-plasma;
+  box-shadow: 0 0 8px fade(@demon-plasma, 55%);
+}
+
+body.theme-ui-demon .outline-view .item.selected .item-count-box {
+  color: @demon-void;
+  background: @demon-laser;
+}
+
+body.theme-ui-demon .notification {
+  background: @demon-plasma;
+  color: @demon-text;
+}
+
+body.theme-ui-demon .thread-icon.thread-icon-unread {
+  background-image: none;
+  position: relative;
+  &::after {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    margin: 8px auto;
+    border-radius: 50%;
+    background: @demon-laser;
+    box-shadow: 0 0 6px fade(@demon-laser, 80%);
+  }
+}

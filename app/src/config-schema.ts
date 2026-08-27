@@ -29,7 +29,7 @@ export default {
         properties: {
           useSystemAccent: {
             type: 'boolean',
-            default: true,
+            default: false,
             title: localized('Use system accent color'),
           },
         },
