@@ -379,7 +379,7 @@ export default class SidebarItem {
 
   static forDrafts(accountIds: string[], opts: Partial<ISidebarItem> = {}) {
     const perspective = MailboxPerspective.forDrafts(accountIds);
-    const id = `Drafts-${opts.name}`;
+    const id = `Drafts-${accountIds.join('-')}-${opts.name || 'root'}`;
     return this.forPerspective(id, perspective, opts);
   }
 }

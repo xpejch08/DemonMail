@@ -26,11 +26,12 @@ const BUCKETS: { id: string; bucket: SmartInboxBucket; name: () => string; iconN
 export const name = 'SmartInboxAccountSidebarExtension';
 
 export function sidebarItems(accountIds: string[]) {
+  const unified = accountIds.length > 1;
   return BUCKETS.map((item) => ({
     id: item.id,
-    name: item.name(),
+    name: unified ? localized('All %@', item.name()) : item.name(),
     iconName: item.iconName,
     perspective: MailboxPerspective.forSmartInbox(accountIds, item.bucket),
-    insertAfterInbox: true,
+    insertAfterInbox: !unified,
   }));
 }

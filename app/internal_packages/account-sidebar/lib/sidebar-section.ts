@@ -83,6 +83,29 @@ function appendExtensionSidebarItems(
   }
 }
 
+function inboxAccountChildren(account: Account): ISidebarItem[] {
+  const children: ISidebarItem[] = [];
+  for (const ext of ExtensionRegistry.AccountSidebar.extensions()) {
+    for (const spec of sidebarSpecsForExtension(ext, [account.id])) {
+      if (!spec || !spec.insertAfterInbox) {
+        continue;
+      }
+      children.push(
+        SidebarItem.forPerspective(`${spec.id}-inbox-${account.id}`, spec.perspective, {
+          name: spec.name,
+          iconName: spec.iconName,
+        })
+      );
+    }
+  }
+  children.push(
+    SidebarItem.forDrafts([account.id], {
+      name: localized('Drafts'),
+    })
+  );
+  return children;
+}
+
 class SidebarSection {
   static empty(title: string): ISidebarSection {
     return {
@@ -144,6 +167,7 @@ class SidebarSection {
       }
 
       children = [];
+      const nestInboxBuckets = names.includes('inbox');
       // eslint-disable-next-line
       accounts.forEach((acc) => {
         const cat = _.first(
@@ -155,7 +179,12 @@ class SidebarSection {
           return;
         }
         children.push(
-          SidebarItem.forCategories([cat], { name: acc.label, editable: false, deletable: false })
+          SidebarItem.forCategories([cat], {
+            name: acc.label,
+            editable: false,
+            deletable: false,
+            children: nestInboxBuckets ? inboxAccountChildren(acc) : [],
+          })
         );
       });
 
@@ -173,6 +202,7 @@ class SidebarSection {
       children: accounts.map((acc) => SidebarItem.forUnread([acc.id], { name: acc.label })),
     });
     const draftsItem = SidebarItem.forDrafts(accountIds, {
+      name: localized('All Drafts'),
       children: accounts.map((acc) => SidebarItem.forDrafts([acc.id], { name: acc.label })),
     });
 
