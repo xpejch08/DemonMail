@@ -271,7 +271,10 @@ function occurrenceFromICS(args: {
     isException: args.isException ?? !!rid,
     recurrenceIdStart: rid ? (rid as any).toJSDate().getTime() / 1000 : undefined,
     isRecurring: args.isRecurring,
-    organizer: item.organizer ? { email: item.organizer } : null,
+    // ICS carries the organizer as a mailto: URI. Attendees go through
+    // normalizeEmail above; this one used to keep the prefix, so the same
+    // person read as 'mailto:x@y' here and 'x@y' there.
+    organizer: item.organizer ? { email: normalizeEmail(String(item.organizer)) } : null,
     attendees,
   };
 
