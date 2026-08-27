@@ -389,6 +389,15 @@ export default {
           },
         },
       },
+      smartInbox: {
+        type: 'object',
+        properties: {
+          senders: {
+            type: 'object',
+            default: {},
+          },
+        },
+      },
     },
   },
 };

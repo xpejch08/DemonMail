@@ -326,7 +326,13 @@ export default class SidebarItem {
     const contextMenuLabel = _str.capitalize(
       categories[0] != null ? categories[0].displayType() : undefined
     );
-    const perspective = MailboxPerspective.forCategories(categories);
+    const perspective =
+      categories.length > 0 && categories.every((c) => c.role === 'inbox')
+        ? MailboxPerspective.forSmartInbox(
+            [...new Set(categories.map((c) => c.accountId))],
+            'wanted'
+          )
+        : MailboxPerspective.forCategories(categories);
 
     if (opts.deletable == null) {
       opts.deletable = true;

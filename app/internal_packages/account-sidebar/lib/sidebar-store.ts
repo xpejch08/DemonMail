@@ -5,6 +5,7 @@ import {
   Account,
   AccountStore,
   ThreadCountsStore,
+  SmartInboxCountsStore,
   WorkspaceStore,
   OutboxStore,
   FocusedPerspectiveStore,
@@ -68,6 +69,7 @@ class SidebarStore extends MailspringStore {
     this.listenTo(WorkspaceStore, this._updateSections);
     this.listenTo(OutboxStore, this._updateSections);
     this.listenTo(ThreadCountsStore, this._updateSections);
+    this.listenTo(SmartInboxCountsStore, this._updateSections);
     this.listenTo(CategoryStore, this._updateSections);
 
     this.configSubscription = AppEnv.config.onDidChange(

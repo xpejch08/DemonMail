@@ -33,6 +33,56 @@ function toggleSectionCollapsed(section: ISidebarSection) {
   SidebarActions.setKeyCollapsed(section.title, !isSectionCollapsed(section.title));
 }
 
+function sidebarSpecsForExtension(ext, accountIds: string[]) {
+  if (typeof ext.sidebarItems === 'function') {
+    return ext.sidebarItems(accountIds) || [];
+  }
+  if (typeof ext.sidebarItem === 'function') {
+    const spec = ext.sidebarItem(accountIds);
+    return spec ? [spec] : [];
+  }
+  return [];
+}
+
+function appendExtensionSidebarItems(
+  items: ISidebarItem[],
+  accountIds: string[],
+  accounts: Account[]
+) {
+  let afterInboxIndex = 1;
+  for (const ext of ExtensionRegistry.AccountSidebar.extensions()) {
+    const specs = sidebarSpecsForExtension(ext, accountIds);
+    for (const spec of specs) {
+      if (!spec) {
+        continue;
+      }
+      const item = SidebarItem.forPerspective(spec.id, spec.perspective, {
+        name: spec.name,
+        iconName: spec.iconName,
+        children:
+          accounts.length > 1
+            ? accounts.map((acc) => {
+                const subSpecs = sidebarSpecsForExtension(ext, [acc.id]);
+                const sub = subSpecs.find((s) => s.id === spec.id) || subSpecs[0];
+                return SidebarItem.forPerspective(`${sub.id}-${acc.id}`, sub.perspective, {
+                  name: acc.label,
+                  iconName: sub.iconName,
+                });
+              })
+            : [],
+      });
+      if (spec.insertAfterInbox) {
+        items.splice(afterInboxIndex, 0, item);
+        afterInboxIndex += 1;
+      } else if (spec.insertAtTop) {
+        items.splice(3, 0, item);
+      } else {
+        items.push(item);
+      }
+    }
+  }
+}
+
 class SidebarSection {
   static empty(title: string): ISidebarSection {
     return {
@@ -63,17 +113,7 @@ class SidebarSection {
     items.splice(1, 0, unreadItem, starredItem);
     items.push(draftsItem);
 
-    ExtensionRegistry.AccountSidebar.extensions()
-      .filter((ext) => ext.sidebarItem != null)
-      .forEach((ext) => {
-        const { id, name, iconName, perspective, insertAtTop } = ext.sidebarItem([account.id]);
-        const item = SidebarItem.forPerspective(id, perspective, { name, iconName });
-        if (insertAtTop) {
-          return items.splice(3, 0, item);
-        } else {
-          return items.push(item);
-        }
-      });
+    appendExtensionSidebarItems(items, [account.id], [account]);
 
     return {
       title: account.label,
@@ -140,27 +180,7 @@ class SidebarSection {
     items.splice(1, 0, unreadItem, starredItem);
     items.push(draftsItem);
 
-    ExtensionRegistry.AccountSidebar.extensions()
-      .filter((ext) => ext.sidebarItem != null)
-      .forEach((ext) => {
-        const { id, name, iconName, perspective, insertAtTop } = ext.sidebarItem(accountIds);
-        const item = SidebarItem.forPerspective(id, perspective, {
-          name,
-          iconName,
-          children: accounts.map((acc) => {
-            const subItem = ext.sidebarItem([acc.id]);
-            return SidebarItem.forPerspective(subItem.id + `-${acc.id}`, subItem.perspective, {
-              name: acc.label,
-              iconName: subItem.iconName,
-            });
-          }),
-        });
-        if (insertAtTop) {
-          items.splice(3, 0, item);
-        } else {
-          items.push(item);
-        }
-      });
+    appendExtensionSidebarItems(items, accountIds, accounts);
 
     return {
       title: localized('All Accounts'),

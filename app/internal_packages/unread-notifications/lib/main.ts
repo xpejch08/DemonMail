@@ -10,6 +10,7 @@ import {
   localized,
   DatabaseChangeRecord,
   TaskFactory,
+  SmartInbox,
 } from 'mailspring-exports';
 
 const WAIT_FOR_CHANGES_DELAY = 400;
@@ -270,7 +271,11 @@ export class Notifier {
 
       // Filter new messages to just the ones in the inbox
       const newMessagesInInbox = newMessages.filter(({ threadId }) => {
-        return threads[threadId] && threads[threadId].categories.find((c) => c.role === 'inbox');
+        const thread = threads[threadId];
+        if (!thread || !thread.categories.find((c) => c.role === 'inbox')) {
+          return false;
+        }
+        return !SmartInbox.isNonWantedSmartInboxThread(thread);
       });
 
       if (newMessagesInInbox.length === 0) {
