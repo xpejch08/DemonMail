@@ -144,12 +144,15 @@ module.exports = ErrorLogger = (function () {
     if (process.type === 'renderer') {
       return;
     }
+    // Forked from Mailspring — do NOT submit crash reports to Foundry376's
+    // servers under their product name. Crash dumps still write locally to
+    // Crashpad (%APPDATA%\DemonMail\Crashpad\reports) for local debugging.
     require('electron').crashReporter.start({
-      productName: 'Mailspring',
-      companyName: 'Mailspring',
-      submitURL: `https://id.getmailspring.com/report-crash?ver=${appVersion}&platform=${process.platform}`,
-      uploadToServer: true,
-      autoSubmit: true,
+      productName: 'DemonMail',
+      companyName: 'DemonMail',
+      submitURL: '',
+      uploadToServer: false,
+      autoSubmit: false,
       extra: {
         ver: appVersion,
         platform: process.platform,

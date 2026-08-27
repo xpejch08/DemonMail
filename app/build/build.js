@@ -197,7 +197,7 @@ function buildPackagerOptions() {
     appVersion: packageJSON.version,
     platform,
     protocols: [
-      { name: 'Mailspring Protocol', schemes: ['mailspring'] },
+      { name: 'DemonMail Protocol', schemes: ['mailspring'] },
       { name: 'Mailto Protocol', schemes: ['mailto'] },
     ],
     dir: appDir,
@@ -213,8 +213,13 @@ function buildPackagerOptions() {
       win32: path.resolve(appDir, 'build', 'resources', 'win', 'mailspring-square.ico'),
       linux: undefined,
     }[platform],
+    // NOTE: must keep "Mailspring" in the name. The prebuilt mailsync.exe refuses to
+    // start (exit 2, no output) unless its own path contains the substring "mailspring"
+    // (case-insensitive) — verified with byte-identical files at differing paths.
+    // User-visible branding is DemonMail everywhere else; this only affects the
+    // output folder and .exe filename.
     name: { darwin: 'Mailspring', win32: 'Mailspring', linux: 'mailspring' }[platform],
-    appCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC. All rights reserved.`,
+    appCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC & Stepan Pejchar. Forked from Mailspring.`,
     derefSymlinks: false,
     asar: {
       unpack:
@@ -315,17 +320,17 @@ function buildPackagerOptions() {
         }
       : undefined,
     win32metadata: {
-      CompanyName: 'Foundry 376, LLC',
-      FileDescription: 'Mailspring',
-      LegalCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC. All rights reserved.`,
-      ProductName: 'Mailspring',
+      CompanyName: 'Stepan Pejchar',
+      FileDescription: 'DemonMail',
+      LegalCopyright: `Copyright (C) 2014-${new Date().getFullYear()} Foundry 376, LLC & Stepan Pejchar. Forked from Mailspring.`,
+      ProductName: 'DemonMail',
     },
     // NOTE: The following plist keys can NOT be set in the extra.plist since
     // they are manually overridden by electron-packager based on this config:
     //   CFBundleDisplayName, CFBundleExecutable, CFBundleIdentifier, CFBundleName
     // See https://github.com/electron-userland/electron-packager/blob/master/mac.js#L50
     extendInfo: path.resolve(appDir, 'build', 'resources', 'mac', 'extra.plist'),
-    appBundleId: 'com.mailspring.mailspring',
+    appBundleId: 'com.demonmail.demonmail',
     afterCopy: [
       runCopyPlatformSpecificResources,
       runWriteCommitHashIntoPackage,

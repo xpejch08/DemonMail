@@ -41,12 +41,12 @@ if (typeof process.setFdLimit === 'function') {
 }
 
 const setupConfigDir = args => {
-  let dirname = 'Mailspring';
+  let dirname = 'DemonMail';
   if (args.devMode) {
-    dirname = 'Mailspring-dev';
+    dirname = 'DemonMail-dev';
   }
   if (args.specMode) {
-    dirname = 'Mailspring-spec';
+    dirname = 'DemonMail-spec';
   }
 
   // Check if a custom config dir was provided via --config-dir-path
