@@ -89,6 +89,8 @@ export const LocalizedErrorStrings = {
 // being treated as expected, user-actionable failures.
 const AMBIGUOUS_MAILSYNC_ERRORS = new Set(['ErrorParse', 'ErrorIdentityMissingFields']);
 
+const CA_BUNDLE_GENERATION = 2;
+
 export class MailsyncProcess extends EventEmitter {
   _proc: ChildProcess = null;
   _win = null;
@@ -107,7 +109,55 @@ export class MailsyncProcess extends EventEmitter {
     this.verbose = verbose;
     this.resourcePath = resourcePath;
     this.configDirPath = configDirPath;
-    this.binaryPath = path.join(resourcePath, 'mailsync').replace('app.asar', 'app.asar.unpacked');
+    this.binaryPath = this._resolveBinaryPath();
+  }
+
+  /* The prebuilt mailsync.exe refuses to start (exit 2, no stdout/stderr) unless
+  its own path contains "mailspring" (case-insensitive). Packaged builds keep
+  that substring via electron-packager's `name`. A DemonMail checkout does not,
+  so alias the binary directory through a temp junction whose path includes it.
+  See app/build/build.js for the same constraint on the packaged exe name. */
+  _resolveBinaryPath() {
+    const unpacked = this.resourcePath.replace('app.asar', 'app.asar.unpacked');
+    const filename = process.platform === 'win32' ? 'mailsync.exe' : 'mailsync';
+    const realPath = path.join(unpacked, filename);
+    if (process.platform !== 'win32' || realPath.toLowerCase().includes('mailspring')) {
+      return realPath;
+    }
+    const aliasDir = path.join(os.tmpdir(), 'mailspring-sync-bin');
+    this._ensureMailspringPathAlias(aliasDir, unpacked);
+    return path.join(aliasDir, filename);
+  }
+
+  _ensureMailspringPathAlias(aliasDir: string, targetDir: string) {
+    const resolvedTarget = path.resolve(targetDir);
+    try {
+      if (path.resolve(fs.realpathSync(aliasDir)) === resolvedTarget) {
+        return;
+      }
+    } catch {
+      // missing or broken alias - replace below
+    }
+    this._removePathAlias(aliasDir);
+    fs.symlinkSync(resolvedTarget, aliasDir, 'junction');
+  }
+
+  _removePathAlias(aliasDir: string) {
+    try {
+      const st = fs.lstatSync(aliasDir);
+      if (st.isSymbolicLink()) {
+        fs.unlinkSync(aliasDir);
+        return;
+      }
+      // Windows junctions often look like directories, not symlinks.
+      // rmdir removes the junction; recursive rm would follow it and
+      // delete the real mailsync binaries.
+      fs.rmdirSync(aliasDir);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        throw err;
+      }
+    }
   }
 
   _showStatusWindow(mode) {
@@ -157,6 +207,73 @@ export class MailsyncProcess extends EventEmitter {
     });
   }
 
+  /* The prebuilt mailsync binary links an OpenSSL that vcpkg built on upstream's
+  CI machine, so its compiled-in OPENSSLDIR points at a path that does not exist
+  here (D:\a\Mailspring-Sync\...), and no CA bundle ships alongside the binary.
+  OpenSSL therefore has no trust store and every TLS handshake fails with
+  "unable to get local issuer certificate". Write out Electron's own Mozilla root
+  store plus the OS trust store and point OpenSSL (SSL_CERT_FILE) and libcurl
+  (CURL_CA_BUNDLE) at it, so the bundle tracks whatever Electron version we ship.
+  Bump CA_BUNDLE_GENERATION when the generator changes - the 24h cache would
+  otherwise keep serving a bundle that is missing the new roots. */
+  _ensureCaBundle() {
+    const bundlePath = path.join(this.configDirPath, 'ca-bundle.pem');
+    const maxAgeMs = 24 * 60 * 60 * 1000;
+    const header = `# generation ${CA_BUNDLE_GENERATION}\n`;
+    try {
+      try {
+        const existing = fs.readFileSync(bundlePath, 'utf8');
+        const mtimeMs = fs.statSync(bundlePath).mtimeMs;
+        if (existing.startsWith(header) && Date.now() - mtimeMs < maxAgeMs) {
+          return bundlePath;
+        }
+      } catch (err) {
+        // no bundle yet - fall through and write one
+      }
+
+      const pems = [require('tls').rootCertificates.join('\n')];
+      const systemPems = this._systemRootCertificates();
+      if (systemPems) {
+        pems.push(systemPems);
+      }
+      fs.writeFileSync(bundlePath, `${header}${pems.join('\n')}\n`);
+      return bundlePath;
+    } catch (err) {
+      console.error('Could not write the CA bundle mailsync needs for TLS:', err);
+      return null;
+    }
+  }
+
+  /* Electron exposes only the Mozilla root list, but the machine may also trust
+  locally installed roots - a corporate TLS proxy, or an antivirus that scans mail
+  (Avast installs "Avast Web/Mail Shield Root" and re-signs IMAP/SMTP). Chrome and
+  Thunderbird honour the Windows store; mailsync's OpenSSL cannot read it, so
+  export it here and append it to the bundle. Failure is non-fatal - we fall back
+  to the Mozilla roots alone. */
+  _systemRootCertificates() {
+    if (process.platform !== 'win32') {
+      return null;
+    }
+    const script =
+      'Get-ChildItem Cert:/LocalMachine/Root, Cert:/CurrentUser/Root | ForEach-Object { ' +
+      "'-----BEGIN CERTIFICATE-----'; " +
+      "[Convert]::ToBase64String($_.RawData, 'InsertLineBreaks'); " +
+      "'-----END CERTIFICATE-----' }";
+    const result = require('child_process').spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', script],
+      { encoding: 'utf8', timeout: 20000, windowsHide: true }
+    );
+    if (!result.stdout || !result.stdout.includes('BEGIN CERTIFICATE')) {
+      console.error(
+        'Could not export the Windows root store:',
+        result.stderr || result.error || `exit ${result.status}`
+      );
+      return null;
+    }
+    return result.stdout;
+  }
+
   _spawnProcess(mode) {
     const env = {
       ...process.env,
@@ -165,6 +282,19 @@ export class MailsyncProcess extends EventEmitter {
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET,
       IDENTITY_SERVER: 'unknown',
     };
+
+    const caBundlePath = this._ensureCaBundle();
+    if (caBundlePath) {
+      env.SSL_CERT_FILE = caBundlePath;
+      env.CURL_CA_BUNDLE = caBundlePath;
+    }
+    /* Cyrus SASL loads sasl*.dll from SASL_PATH. The prebuilt mailsync.exe was
+    linked on CI with a path that does not exist here; empty SASL_PATH makes
+    Windows SMTP die with MAILSMTP_ERROR_STREAM before a banner. Point at the
+    real native dir, not the mailspring-path junction used only for the exe. */
+    const pluginDir = path.resolve(this.resourcePath.replace('app.asar', 'app.asar.unpacked'));
+    env.SASL_PATH = pluginDir;
+    env.PATH = `${pluginDir}${path.delimiter}${env.PATH || ''}`;
     if (process.type === 'renderer') {
       const rootURLForServer = require('./flux/mailspring-api-request').rootURLForServer;
       env.IDENTITY_SERVER = rootURLForServer('identity');
@@ -177,7 +307,7 @@ export class MailsyncProcess extends EventEmitter {
     if (this.account) {
       args.push('--info', this.account.emailAddress);
     }
-    this._proc = spawn(this.binaryPath, args, { env });
+    this._proc = spawn(this.binaryPath, args, { env, cwd: pluginDir });
 
     /* Allow us to buffer up to 1MB on stdin instead of 16k. This is necessary
     because some tasks (creating replies to drafts, etc.) can be gigantic amounts
