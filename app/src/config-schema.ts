@@ -4,6 +4,37 @@ export default {
   core: {
     type: 'object',
     properties: {
+      /* The MCP server package stores its settings under core.mcp. Config.set
+      runs every value through makeValueConformToSchema, which throws for a
+      keyPath that has no schema - so without this block the MCP preferences
+      pane silently fails to persist anything (enable, port, access level and
+      the generated token all get dropped). */
+      mcp: {
+        type: 'object',
+        properties: {
+          enabled: {
+            type: 'boolean',
+            default: false,
+          },
+          port: {
+            type: 'integer',
+            default: 2587,
+          },
+          accessLevel: {
+            type: 'string',
+            default: 'read-only',
+            enum: ['read-only', 'read-write', 'read-write-send'],
+          },
+          token: {
+            type: 'string',
+            default: '',
+          },
+          enabledAccounts: {
+            type: 'object',
+            default: {},
+          },
+        },
+      },
       intl: {
         type: 'object',
         properties: {
