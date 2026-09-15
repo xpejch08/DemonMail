@@ -3,6 +3,7 @@ import MailspringStore from 'mailspring-store';
 import FocusedPerspectiveStore from './focused-perspective-store';
 import { AccountStore } from './account-store';
 import ThreadCountsStore from './thread-counts-store';
+import SmartInboxCountsStore from './smart-inbox-counts-store';
 import CategoryStore from './category-store';
 
 class BadgeStore extends MailspringStore {
@@ -14,6 +15,7 @@ class BadgeStore extends MailspringStore {
 
     this.listenTo(FocusedPerspectiveStore, this._updateCounts);
     this.listenTo(ThreadCountsStore, this._updateCounts);
+    this.listenTo(SmartInboxCountsStore, this._updateCounts);
     this.listenTo(AccountStore, this._updateCounts);
 
     AppEnv.config.onDidChange('core.notifications.countBadgeAllAccounts', this._updateCounts);
@@ -45,8 +47,8 @@ class BadgeStore extends MailspringStore {
     const accountIds = AppEnv.config.get('core.notifications.countBadgeAllAccounts')
       ? AccountStore.accountIds()
       : FocusedPerspectiveStore.current().accountIds;
+    unread = SmartInboxCountsStore.unreadCount(accountIds, 'wanted');
     for (const cat of CategoryStore.getCategoriesWithRoles(accountIds, 'inbox')) {
-      unread += ThreadCountsStore.unreadCountForCategoryId(cat.id);
       total += ThreadCountsStore.totalCountForCategoryId(cat.id);
     }
 

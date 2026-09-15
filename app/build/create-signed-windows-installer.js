@@ -16,12 +16,15 @@ const config = {
   appDirectory: path.join(appDir, 'dist', 'mailspring-win32-x64'),
   loadingGif: path.join(appDir, 'build', 'resources', 'win', 'loading.gif'),
   iconUrl: 'http://mailspring-builds.s3.amazonaws.com/assets/mailspring-square.ico',
-  description: 'Mailspring',
+  description: "Stepan's own email client, forked from Mailspring",
   version: version,
-  title: 'Mailspring',
-  authors: 'Foundry 376, LLC',
+  title: 'DemonMail',
+  authors: 'Stepan Pejchar',
   setupIcon: path.join(appDir, 'build', 'resources', 'win', 'mailspring-square.ico'),
-  setupExe: 'MailspringSetup.exe',
+  setupExe: 'DemonMailSetup.exe',
+  // exe / name must keep "mailspring" — see the note in build.js: the prebuilt
+  // mailsync.exe won't start unless its path contains that substring, and `name`
+  // decides the install dir (%LOCALAPPDATA%\<name>\app-x.x.x).
   exe: 'mailspring.exe',
   name: 'Mailspring',
 };

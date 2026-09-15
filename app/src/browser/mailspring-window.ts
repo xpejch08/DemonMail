@@ -99,13 +99,16 @@ export default class MailspringWindow extends EventEmitter {
     type GetConstructorArgs<T> = T extends new (options: infer U) => any ? U : never;
     const browserWindowOptions: GetConstructorArgs<typeof BrowserWindow> = {
       show: false,
-      title: title || 'Mailspring',
+      title: title || 'DemonMail',
       frame,
       width,
       height,
       resizable,
       titleBarStyle,
       webPreferences: {
+        // Electron 20+ defaults sandbox to true, which silently ignores
+        // nodeIntegration. The renderer bootstrap (index.js) requires Node.
+        sandbox: false,
         nodeIntegration: true,
         contextIsolation: false,
         webviewTag: true,
@@ -123,19 +126,27 @@ export default class MailspringWindow extends EventEmitter {
       browserWindowOptions.webPreferences.backgroundThrottling = false;
     }
 
-    // Don't set icon on Windows so the exe's ico will be used as window and
-    // taskbar's icon. See https://github.com/atom/atom/issues/4811 for more.
-    if (process.platform === 'linux') {
+    // Packaged Windows uses the exe's ico. Unpackaged `npm start` runs
+    // electron.exe, so set the icon explicitly or the taskbar shows the
+    // default Electron atom. See https://github.com/atom/atom/issues/4811
+    if (process.platform === 'linux' || (process.platform === 'win32' && !app.isPackaged)) {
       if (!WindowIconPath) {
-        WindowIconPath = getFirstExistingPath(
-          XDG_DATA_PATHS,
-          path.join('pixmaps', 'mailspring.png')
-        );
+        if (process.platform === 'linux') {
+          WindowIconPath = getFirstExistingPath(
+            XDG_DATA_PATHS,
+            path.join('pixmaps', 'mailspring.png')
+          );
+        }
         if (!WindowIconPath) {
-          WindowIconPath = path.resolve(this.resourcePath, 'static', 'images', 'mailspring.png');
+          WindowIconPath =
+            process.platform === 'win32'
+              ? path.resolve(this.resourcePath, 'build', 'resources', 'win', 'mailspring.ico')
+              : path.resolve(this.resourcePath, 'static', 'images', 'mailspring.png');
         }
       }
-      browserWindowOptions.icon = WindowIconPath;
+      if (WindowIconPath && fs.existsSync(WindowIconPath)) {
+        browserWindowOptions.icon = WindowIconPath;
+      }
     }
 
     this.browserWindow = new BrowserWindow(browserWindowOptions);
@@ -322,6 +333,19 @@ export default class MailspringWindow extends EventEmitter {
 
     this.browserWindow.webContents.on('will-navigate', (event, url) => {
       event.preventDefault();
+    });
+
+    this.browserWindow.webContents.on(
+      'did-fail-load',
+      (_event, errorCode, errorDescription, validatedURL) => {
+        console.error(`Window failed to load ${validatedURL}: ${errorCode} ${errorDescription}`);
+      }
+    );
+
+    this.browserWindow.webContents.on('console-message', (event) => {
+      if (event.level >= 2) {
+        console.error(`[renderer] ${event.message} (${event.sourceId}:${event.lineNumber})`);
+      }
     });
 
     this.browserWindow.webContents.setWindowOpenHandler(({ url, frameName, disposition }) => {

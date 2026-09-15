@@ -183,11 +183,11 @@ exports.createRegistryEntries = createRegistryEntries;
 exports.existsSync = () => fs.existsSync(updateDotExe);
 
 // Register the AppUserModelId with a display name so Windows notifications
-// show "Mailspring" instead of "com.squirrel.mailspring.mailspring"
+// show "DemonMail" instead of "com.squirrel.mailspring.mailspring"
 // Registry path: HKEY_CURRENT_USER\SOFTWARE\Classes\AppUserModelId\{AUMID}
 function registerAppUserModelId(callback) {
   const aumid = 'com.squirrel.mailspring.mailspring';
-  const displayName = 'Mailspring';
+  const displayName = 'DemonMail';
   const iconPath = path.join(appFolder, 'resources', 'mailspring-square.ico');
 
   let regPath = 'reg.exe';
@@ -285,12 +285,12 @@ exports.handleSquirrelInstall = app => {
     'Windows',
     'Start Menu',
     'Programs',
-    'Mailspring.lnk'
+    'DemonMail.lnk'
   );
   const desktopPath = path.join(
     process.env.USERPROFILE || process.env.HOME,
     'Desktop',
-    'Mailspring.lnk'
+    'DemonMail.lnk'
   );
   const iconPath = path.join(appFolder, 'resources', 'mailspring-square.ico');
 
@@ -335,7 +335,7 @@ exports.handleSquirrelInstall = app => {
     '/t',
     'REG_SZ',
     '/d',
-    'Mailspring',
+    'DemonMail',
     '/f',
   ]);
   if (fs.existsSync(iconPath)) {
@@ -381,12 +381,12 @@ exports.handleSquirrelUninstall = app => {
     'Windows',
     'Start Menu',
     'Programs',
-    'Mailspring.lnk'
+    'DemonMail.lnk'
   );
   const desktopPath = path.join(
     process.env.USERPROFILE || process.env.HOME,
     'Desktop',
-    'Mailspring.lnk'
+    'DemonMail.lnk'
   );
 
   try {

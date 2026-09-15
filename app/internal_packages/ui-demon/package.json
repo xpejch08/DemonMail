@@ -1,0 +1,12 @@
+{
+  "name": "ui-demon",
+  "displayName": "Demon",
+  "theme": "ui",
+  "version": "1.0.0",
+  "description": "Void-black Demon theme: nebula purple, devil red, space-hull chrome.",
+  "license": "GPL-3.0",
+  "engines": {
+    "mailspring": "*"
+  },
+  "private": true
+}

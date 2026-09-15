@@ -2,6 +2,24 @@ import { protocol } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
+const MIME_BY_EXT: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.css': 'text/css',
+  '.js': 'text/javascript',
+  '.json': 'application/json',
+  '.html': 'text/html',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+};
+
 // Handles requests with 'mailspring' protocol.
 //
 // It's created by {Application} upon instantiation and is used to create a
@@ -11,8 +29,7 @@ import path from 'path';
 //   * <config-dir>/assets
 //   * <config-dir>/dev/packages (unless in safe mode)
 //   * <config-dir>/packages
-//   * RESOURCE_PATH/node_modules
-//
+//   * RESOURCE_PATH/internal_packages
 export default class MailspringProtocolHandler {
   loadPaths: string[] = [];
 
@@ -26,20 +43,15 @@ export default class MailspringProtocolHandler {
     this.registerProtocol();
   }
 
-  // Creates the 'Mailspring' custom protocol handler.
   registerProtocol() {
     const scheme = 'mailspring';
 
     protocol.handle(scheme, (request) => {
-      const relativePath = path.normalize(request.url.substr(scheme.length + 1));
+      const relativePath = this.relativePathFromRequest(request.url);
 
       let filePath = null;
       for (const loadPath of this.loadPaths) {
-        // Use path.join (not path.resolve) so absolute-looking inputs like
-        // "/foo" stay anchored to the load path instead of replacing it.
         const candidate = path.resolve(path.join(loadPath, relativePath));
-        // Ensure the resolved path is contained within the load path.
-        // Append path.sep to prevent prefix-matching attacks (e.g. /packages-evil/).
         if (candidate !== loadPath && !candidate.startsWith(loadPath + path.sep)) {
           continue;
         }
@@ -55,11 +67,28 @@ export default class MailspringProtocolHandler {
         }
       }
 
-      if (filePath) {
-        return new Response(fs.readFileSync(filePath), { status: 200 });
-      } else {
+      if (!filePath) {
         return new Response('Not Found', { status: 404 });
       }
+
+      const mime = MIME_BY_EXT[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+      return new Response(fs.readFileSync(filePath), {
+        status: 200,
+        headers: { 'Content-Type': mime },
+      });
     });
+  }
+
+  // mailspring://onboarding/assets/foo.png → onboarding/assets/foo.png
+  // substr() left a leading "//" which Windows treats as UNC, so path.join
+  // dropped the package root and every SVG/PNG 404'd in the packaged exe.
+  private relativePathFromRequest(requestUrl: string): string {
+    try {
+      const parsed = new URL(requestUrl);
+      const parts = [parsed.hostname, ...parsed.pathname.split('/')].filter(Boolean);
+      return path.normalize(parts.map((p) => decodeURIComponent(p)).join(path.sep));
+    } catch {
+      return path.normalize(requestUrl.replace(/^mailspring:/i, '')).replace(/^[/\\]+/, '');
+    }
   }
 }

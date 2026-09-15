@@ -1,0 +1,61 @@
+@import 'ui-variables';
+
+.smart-inbox-sender-card {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  background: @background-color-info;
+  color: @text-color-inverse;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.smart-inbox-sender-card-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.smart-inbox-sender-card-hint {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.smart-inbox-sender-card-who {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smart-inbox-sender-card-rest {
+  font-size: 0.8em;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.smart-inbox-sender-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.smart-inbox-sender-card-btn {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: inherit;
+  border-radius: @border-radius-base;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.smart-inbox-sender-card-btn:hover,
+.smart-inbox-sender-card-btn.suggested {
+  background: rgba(255, 255, 255, 0.2);
+}

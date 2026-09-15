@@ -69,6 +69,9 @@ describe('McpHttpServer', function () {
       try {
         const { tools } = await client.listTools();
         expect(tools.map((t) => t.name)).toContain('get_attachment');
+        expect(tools.map((t) => t.name)).toContain('list_calendars');
+        expect(tools.map((t) => t.name)).toContain('create_event');
+        expect(tools.map((t) => t.name)).toContain('delete_event');
 
         const { resourceTemplates } = await client.listResourceTemplates();
         expect(resourceTemplates.map((t) => t.uriTemplate)).toContain(

@@ -10,6 +10,8 @@ import CategoryStore from './flux/stores/category-store';
 import DatabaseStore from './flux/stores/database-store';
 import OutboxStore from './flux/stores/outbox-store';
 import ThreadCountsStore from './flux/stores/thread-counts-store';
+import SmartInboxCountsStore from './flux/stores/smart-inbox-counts-store';
+import { applySmartInboxMatcher, SmartInboxBucket } from './flux/models/smart-inbox';
 import FolderSyncProgressStore from './flux/stores/folder-sync-progress-store';
 import { MutableQuerySubscription } from './flux/models/mutable-query-subscription';
 import UnreadQuerySubscription from './flux/models/unread-query-subscription';
@@ -64,13 +66,32 @@ export class MailboxPerspective {
   }
 
   static forInbox(accountsOrIds: string[]) {
-    return this.forStandardCategories(accountsOrIds, 'inbox');
+    return this.forSmartInbox(accountsOrIds, 'wanted');
   }
 
-  static fromJSON(json: { type: string; serializedCategories?: string; accountIds: string[] }) {
+  static forSmartInbox(accountsOrIds: string[], bucket: SmartInboxBucket) {
+    const categories = CategoryStore.getCategoriesWithRoles(accountsOrIds, 'inbox');
+    return categories.length > 0
+      ? new SmartInboxPerspective(categories, bucket)
+      : this.forNothing();
+  }
+
+  static fromJSON(json: {
+    type: string;
+    serializedCategories?: string;
+    accountIds: string[];
+    smartInboxBucket?: SmartInboxBucket;
+  }) {
     try {
+      if (json.type === SmartInboxPerspective.name) {
+        const categories = JSON.parse(json.serializedCategories).map(Utils.convertToModel);
+        return new SmartInboxPerspective(categories, json.smartInboxBucket || 'wanted');
+      }
       if (json.type === CategoryMailboxPerspective.name) {
         const categories = JSON.parse(json.serializedCategories).map(Utils.convertToModel);
+        if (categories.length > 0 && categories.every((c) => c.role === 'inbox')) {
+          return new SmartInboxPerspective(categories, 'wanted');
+        }
         return this.forCategories(categories);
       }
       if (json.type === UnreadMailboxPerspective.name) {
@@ -570,6 +591,84 @@ class CategoryMailboxPerspective extends MailboxPerspective {
         source: source,
       });
     });
+  }
+}
+
+const SMART_INBOX_NAMES: { [bucket in SmartInboxBucket]: () => string } = {
+  wanted: () => localized('Inbox'),
+  new: () => localized('New'),
+  newsletter: () => localized('Newsletters'),
+  notification: () => localized('Notifications'),
+  hidden: () => localized('Hidden'),
+};
+
+const SMART_INBOX_ICONS: { [bucket in SmartInboxBucket]: string } = {
+  wanted: 'inbox.png',
+  new: 'unread.png',
+  newsletter: 'sent.png',
+  notification: 'reminders.png',
+  hidden: 'archive.png',
+};
+
+class SmartInboxPerspective extends CategoryMailboxPerspective {
+  bucket: SmartInboxBucket;
+
+  constructor(categories: Category[], bucket: SmartInboxBucket) {
+    super(categories);
+    this.bucket = bucket;
+    this.name = SMART_INBOX_NAMES[bucket]();
+    this.iconName = SMART_INBOX_ICONS[bucket];
+  }
+
+  toJSON() {
+    const json: any = super.toJSON();
+    json.smartInboxBucket = this.bucket;
+    return json;
+  }
+
+  isEqual(other: MailboxPerspective) {
+    return super.isEqual(other) && this.bucket === (other as SmartInboxPerspective).bucket;
+  }
+
+  threads(): QuerySubscription<Thread> {
+    const query = DatabaseStore.findAll<Thread>(Thread)
+      .where([Thread.attributes.categories.containsAny(this.categories().map((c) => c.id))])
+      .limit(0);
+
+    if (!['spam', 'trash'].includes(this.categoriesSharedRole())) {
+      query.where({ inAllMail: true });
+    }
+
+    applySmartInboxMatcher(query, this.bucket);
+
+    if (this._categories.length > 1 && this.accountIds.length < this._categories.length) {
+      query.distinct();
+    }
+
+    return new MutableQuerySubscription<Thread>(query, {
+      emitResultSet: true,
+      updateOnSeparateThread: true,
+    });
+  }
+
+  unreadCount() {
+    return SmartInboxCountsStore.unreadCount(this.accountIds, this.bucket);
+  }
+
+  emptyMessage() {
+    if (this.bucket === 'new') {
+      return localized('No new senders');
+    }
+    if (this.bucket === 'newsletter') {
+      return localized('No newsletters');
+    }
+    if (this.bucket === 'notification') {
+      return localized('No notifications');
+    }
+    if (this.bucket === 'hidden') {
+      return localized('No hidden mail');
+    }
+    return localized('No Messages');
   }
 }
 

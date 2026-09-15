@@ -1,5 +1,10 @@
-import type { Thread, Message, Category, Contact, File } from 'mailspring-exports';
-import { isThreadAllowed, isMessageAllowed } from './mcp-access-control';
+import type { Thread, Message, Category, Contact, File, Calendar } from 'mailspring-exports';
+import { CalendarDateUtils } from 'mailspring-exports';
+import { isThreadAllowed, isMessageAllowed, isAccountAllowed } from './mcp-access-control';
+// Type-only, so this does not pull the calendar package's runtime (Rx,
+// ical-expander) into this module. The expansion function itself is imported
+// where it is called, in mcp-tools.
+import type { EventOccurrence } from '../../main-calendar/lib/core/calendar-data-source';
 
 // Authorization + output-shaping, combined. Every thread/message that leaves
 // this process for an MCP client passes through one of these functions,
@@ -93,4 +98,89 @@ export function serializeThreadDetail(
       .map(serializeMessageDetail)
       .filter((m): m is Record<string, any> => m !== null),
   };
+}
+
+// ── Calendar ──
+
+export function serializeCalendar(calendar: Calendar): Record<string, any> | null {
+  if (!isAccountAllowed(calendar.accountId)) return null;
+  return {
+    id: calendar.id,
+    accountId: calendar.accountId,
+    name: calendar.name,
+    description: calendar.description || null,
+    readOnly: !!calendar.readOnly,
+    color: calendar.color || null,
+  };
+}
+
+// Event descriptions carry whatever the organiser pasted in — Meet boilerplate,
+// full HTML newsletters, entire quoted threads. Left whole, a week of events can
+// dwarf every other tool's output put together, so the default is a hard cap and
+// the caller opts in to more.
+const DEFAULT_DESCRIPTION_LIMIT = 500;
+
+/**
+ * One expanded occurrence, not one database row: a weekly meeting yields one of
+ * these per week inside the queried range, each with its own `start`/`end`.
+ *
+ * `id` is the occurrence id (`<eventId>-e<startUnix>`), stable for a given
+ * occurrence across queries but NOT a database primary key.
+ *
+ * All-day occurrences carry dates only (`YYYY-MM-DD`, `end` inclusive); timed
+ * ones carry ISO 8601 instants. `startDate`/`endDate` give the covered day span
+ * either way, so a caller grouping by day never has to branch on `allDay`.
+ */
+export function serializeEventOccurrence(
+  occurrence: EventOccurrence,
+  opts: { descriptionLimit?: number } = {}
+): Record<string, any> | null {
+  if (!isAccountAllowed(occurrence.accountId)) return null;
+
+  const limit = opts.descriptionLimit ?? DEFAULT_DESCRIPTION_LIMIT;
+  const description = occurrence.description || '';
+  const truncated = limit >= 0 && description.length > limit;
+
+  const startDate = CalendarDateUtils.formatCalendarDate(occurrence.startDate);
+  const endDate = CalendarDateUtils.formatCalendarDate(occurrence.endDate);
+  const eventIdMatch = occurrence.id.match(/^(.*)-e\d+$/);
+
+  const result: Record<string, any> = {
+    id: occurrence.id,
+    // Database primary key of the master Event row. `id` is the occurrence
+    // key (`<eventId>-e<startUnix>`) and is what write tools accept too.
+    eventId: eventIdMatch ? eventIdMatch[1] : occurrence.id,
+    accountId: occurrence.accountId,
+    calendarId: occurrence.calendarId,
+    title: occurrence.title,
+    location: occurrence.location || null,
+    allDay: occurrence.isAllDay,
+    // The covered day span, inclusive both ends, for all-day and timed alike.
+    startDate,
+    endDate,
+    // Cancelled occurrences are kept in the database so a series can show
+    // "this one is off"; a caller that just wants the agenda filters them out.
+    cancelled: occurrence.isCancelled,
+    // TENTATIVE, or invited-and-not-yet-answered by Stepan.
+    pending: occurrence.isPending,
+    recurring: occurrence.isRecurring,
+    recurrenceException: occurrence.isException,
+    organizer: occurrence.organizer || null,
+    attendees: occurrence.attendees || [],
+    description: truncated ? description.slice(0, limit) : description,
+  };
+  if (truncated) result.descriptionTruncated = true;
+  if (occurrence.recurrenceIdStart != null) {
+    result.recurrenceIdStart = new Date(occurrence.recurrenceIdStart * 1000).toISOString();
+  }
+
+  if (occurrence.isAllDay === false) {
+    result.start = new Date(occurrence.start * 1000).toISOString();
+    result.end = new Date(occurrence.end * 1000).toISOString();
+  } else {
+    result.start = startDate;
+    result.end = endDate;
+  }
+
+  return result;
 }

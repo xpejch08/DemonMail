@@ -14,6 +14,7 @@ const SYSTEM_ACCENT_SOURCE_PATH = 'system-accent:dynamic';
 export const AUTOMATIC_THEME_NAME = 'ui-automatic';
 export const LIGHT_THEME_NAME = 'ui-light';
 export const DARK_THEME_NAME = 'ui-dark';
+export const DEMON_THEME_NAME = 'ui-demon';
 
 function buildSystemAccentCSS(color: string): string {
   return `:root {
@@ -179,7 +180,7 @@ export default class ThemeManager {
   }
 
   getConfiguredDarkThemeName(): string {
-    return AppEnv.config.get(CONFIG_DARK_THEME_KEY) || DARK_THEME_NAME;
+    return AppEnv.config.get(CONFIG_DARK_THEME_KEY) || DEMON_THEME_NAME;
   }
 
   setLightTheme(packageName: string) {

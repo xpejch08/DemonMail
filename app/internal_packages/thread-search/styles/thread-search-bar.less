@@ -125,3 +125,24 @@
     }
   }
 }
+
+body.theme-ui-demon .thread-search-bar {
+  height: 32px;
+  line-height: 32px;
+  margin-top: 4px;
+  border-radius: 10px;
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, @accent-primary 22%, transparent);
+  background: fade(@input-bg, 90%);
+
+  &:focus {
+    border-radius: 10px;
+    box-shadow: 0 0 0 2px color-mix(in srgb, @accent-primary 45%, transparent);
+  }
+
+  .suggestions {
+    top: 32px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+}

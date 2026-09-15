@@ -560,3 +560,56 @@ body.is-blurred {
     -webkit-app-region: none;
   }
 }
+
+body.theme-ui-demon .thread-list,
+body.theme-ui-demon .draft-list {
+  .list-item {
+    background-color: transparent;
+    border-bottom: none;
+    line-height: 46px;
+    width: calc(100% - 16px);
+    margin-left: 8px;
+    border-radius: 8px;
+
+    &:hover {
+      background: color-mix(in srgb, @accent-primary 12%, transparent);
+    }
+  }
+
+  .unread:not(.focused):not(.selected) {
+    background-color: transparent;
+    &:hover {
+      background: color-mix(in srgb, @accent-primary 12%, transparent);
+    }
+  }
+
+  .unread:not(.focused):not(.selected):not(.next-is-selected) {
+    border-bottom: none;
+  }
+
+  .list-item.selected,
+  .list-item.focused {
+    background: color-mix(in srgb, @accent-primary 28%, transparent);
+    border-bottom: none;
+    border-radius: 8px;
+  }
+
+  .list-column {
+    padding: 0 14px;
+  }
+
+  .thread-icon.thread-icon-unread {
+    &::after {
+      margin: 8px auto;
+    }
+  }
+}
+
+body.theme-ui-demon .thread-list.handler-split .list-item.selected {
+  background: color-mix(in srgb, @accent-primary 32%, transparent);
+  border-radius: 8px;
+}
+
+body.theme-ui-demon .thread-list-narrow .list-tabular-item {
+  line-height: 24px;
+}

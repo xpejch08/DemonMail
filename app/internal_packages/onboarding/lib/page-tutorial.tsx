@@ -97,7 +97,9 @@ export default class TutorialPage extends React.Component<
     if (nextItem) {
       this.setState({ current: nextItem, seen: nextSeen });
     } else {
-      OnboardingActions.moveToPage('authenticate');
+      // Forked: no Mailspring ID. Their identity server only gates Foundry376's
+      // hosted Pro features; IMAP/SMTP sync needs no account with them.
+      OnboardingActions.moveToPage('account-choose');
     }
   };
 

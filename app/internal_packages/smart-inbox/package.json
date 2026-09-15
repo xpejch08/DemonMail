@@ -1,0 +1,17 @@
+{
+  "name": "smart-inbox",
+  "version": "1.0.0",
+  "title": "Smart Inbox",
+  "description": "Split the inbox by sender: Wanted, New, Newsletters, Notifications, Hidden.",
+  "main": "lib/main",
+  "isOptional": false,
+  "isIdentityRequired": false,
+  "isHiddenOnPluginsPage": true,
+  "windowTypes": {
+    "default": true
+  },
+  "engines": {
+    "mailspring": "*"
+  },
+  "license": "GPL-3.0"
+}

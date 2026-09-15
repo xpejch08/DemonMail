@@ -13,13 +13,10 @@ export default class WelcomePage extends React.Component {
     return (
       <div className="page welcome">
         <div className="steps-container">
-          <div>
-            <p className="hero-text" style={{ fontSize: 46, marginTop: 257 }}>
-              {localized('Welcome to Mailspring')}
-            </p>
+          <div className="brand">
             <RetinaImg
-              className="icons"
-              url="mailspring://onboarding/assets/icons-bg@2x.png"
+              className="brand-lockup"
+              url="mailspring://onboarding/assets/daemonmail-lockup.png"
               mode={RetinaImg.Mode.ContentPreserve}
             />
           </div>

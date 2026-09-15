@@ -40,6 +40,7 @@ import {
   serializeThreadDetail,
   serializeMessageDetail,
 } from './mcp-serializers';
+import { registerCalendarTools } from './mcp-calendar-tools';
 
 // Plugin IDs used by the built-in open-tracking and link-tracking packages
 // (see app/internal_packages/open-tracking/package.json and link-tracking/package.json).
@@ -1338,4 +1339,6 @@ export function registerTools(server: McpServer) {
       return textResult(results);
     }
   );
+
+  registerCalendarTools(server, defineTool, textResult, errorResult);
 }

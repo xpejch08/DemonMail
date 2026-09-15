@@ -221,3 +221,26 @@ body.is-blurred {
     }
   }
 }
+
+body.theme-ui-demon .list-container .list-rows {
+  background: @list-bg;
+}
+
+body.theme-ui-demon .list-tabular .list-tabular-item {
+  border-bottom: none;
+  border-left: none;
+
+  &.keyboard-cursor {
+    border-left: none;
+    box-shadow: inset 3px 0 0 @accent-primary;
+  }
+}
+
+body.theme-ui-demon .list-container .list-item {
+  &:hover,
+  &.selected,
+  &.focused,
+  &.next-is-selected {
+    border-bottom: none;
+  }
+}

@@ -6,11 +6,13 @@ import {
   AUTOMATIC_THEME_NAME,
   LIGHT_THEME_NAME,
   DARK_THEME_NAME,
+  DEMON_THEME_NAME,
 } from '../../../src/theme-manager';
 import ThemeOption, { toSelector } from './theme-option';
 import { Disposable } from 'event-kit';
 
 // Sort order for built-in themes; community themes not in this list sort last.
+// Higher index sorts first (the comparator inverts indexOf).
 const INTERNAL_THEME_ORDER = [
   'ui-less-is-more',
   'ui-ubuntu',
@@ -19,6 +21,7 @@ const INTERNAL_THEME_ORDER = [
   DARK_THEME_NAME,
   LIGHT_THEME_NAME,
   AUTOMATIC_THEME_NAME,
+  DEMON_THEME_NAME,
 ];
 
 function sortThemes<T extends { name: string }>(themes: T[]): T[] {
