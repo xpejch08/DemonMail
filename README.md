@@ -1,118 +1,114 @@
-# 💌 Mailspring
+# 😈 DemonMail
 
-**Mailspring is a new version of Nylas Mail maintained by one of the original authors. It's faster, leaner, and shipping today!** It replaces the JavaScript sync code in Nylas Mail with a new C++ sync engine based on [Mailcore2](https://github.com/MailCore/mailcore2). It uses roughly half the RAM and CPU of Nylas Mail and idles with almost zero "CPU Wakes", which translates to great battery life. It also has an entirely revamped composer and other great new features.
+**A desktop mail and calendar client that your AI agent can actually use.**
 
-Mailspring's UI is open source (GPLv3) and written in TypeScript with [Electron](https://github.com/atom/electron) and [React](https://facebook.github.io/react/) - it's built on a plugin architecture and was designed to be easy to extend. Check out [CONTRIBUTING.md](https://github.com/Foundry376/Mailspring/blob/master/CONTRIBUTING.md) to get started!
+DemonMail is a fork of a mature open-source mail client, rebuilt around one idea: the mailbox
+should be a first-class tool for an agent, not something an agent scrapes. It ships an **MCP
+server inside the app** — 27 tools over `127.0.0.1`, bearer-token authenticated, gated by an
+access level you choose, with a per-account allowlist and an audit log you can read in
+Preferences.
 
-Mailspring's sync engine is spawned by the Electron application and runs locally on your computer. [It is open source (GPLv3) and written in C++ and C.](https://github.com/Foundry376/Mailspring-Sync) For convenience, however, when you set up your development environment, Mailspring uses the latest version of the sync engine we've shipped for your platform so you don't need to pull sources or install its compile-time dependencies.
+Everything runs locally. Mail never leaves the machine to reach the agent; the agent talks to
+the client that already has your mailbox synced.
 
-![Mailspring Screenshot](https://github.com/Foundry376/Mailspring/raw/master/screenshots/hero_graphic_mac%402x.png)
+<!-- screenshots go here -->
 
-## Features
+## Why this exists
 
-Mailspring comes packed with powerful features like Unified Inbox, Snooze, Send
-Later, Mail Rules, Templates and more. Mailspring Pro, which you can unlock
-with a monthly subscription, adds even more features for people who send a ton
-of email: link tracking, read receipts, mailbox analytics, contact and company
-profiles. **All of these features run in the client - Mailspring does not send
-your email credentials to the cloud.** For a full list of features, check out
-[getmailspring.com](https://getmailspring.com/).
+I drive a personal knowledge vault from my inbox — nightly sweeps that read mail and calendar,
+turn them into tasks, and keep project context current. Getting a mail client to cooperate with
+that turned out to be the hard part:
 
-## Download Mailspring
+- **Vendor CLIs** work until the vendor changes the shape of the data, and they answer the
+  questions the vendor thought of, not the ones you have.
+- **IMAP-level tooling** gives you raw messages and no client-side state — no idea what's been
+  replied to, no labels the way the provider actually applies them.
+- **Scraping the client's own database** breaks on every upgrade.
 
-You can download compiled versions of Mailspring for Windows, Mac OS X, and
-Linux (deb, rpm and snap) from
-[https://getmailspring.com/download](https://getmailspring.com/download).
+The client already has the sync engine, the folder model, the reply state and the calendar. The
+missing piece was a way to ask it questions. So I added one.
 
-## Getting Help
+## What DemonMail adds
 
-You can find community-based help and discussion with other Mailspring users on our
-[Discourse community](https://community.getmailspring.com/).
+### MCP server, built in
 
-## Contributing
+Not a sidecar process — an internal package that starts with the app.
 
-Mailspring is entirely open-source. Pull requests and contributions are
-welcome! There are three ways to contribute: building a plugin, building a
-theme, and submitting pull requests to the project itself. When you're getting
-started, you may want to join our
-[Discourse](https://community.getmailspring.com/) so you can ask questions and
-learn from other people doing development.
+| | |
+|---|---|
+| Transport | HTTP on `127.0.0.1:2587/mcp`, bearer token |
+| Tools | 27 across mail, threads, attachments, calendar and tracking |
+| Access levels | `read-only`, `read-write`, `read-write-send` |
+| Scope | per-account allowlist — expose one mailbox, hide the rest |
+| Audit | every call logged and viewable in Preferences |
+| Setup | one click from Preferences generates the client config |
 
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+**The access level is a floor, not a suggestion.** At `read-write` the whole `send` category is
+refused by the server, so `send_draft` and `schedule_send` cannot fire even if an agent is told
+to. Drafting stays available. Raising the level is a deliberate act.
 
-### Running Mailspring from Source
+Mail tools: `list_accounts` · `list_folders` · `search_mail` · `list_threads` · `get_thread` ·
+`get_message` · `get_attachment` · `create_draft` · `reply_to_thread` · `send_draft` ·
+`schedule_send` · `list_scheduled_sends` · `set_unread` · `set_starred` · `set_labels` ·
+`move_to_folder` · `archive_threads` · `trash_threads`
 
-To install all dependencies and run Mailspring from its source code,
-run the following commands from the root directory of the Mailspring repository:
+Calendar tools: `list_calendars` · `list_events` · `get_event` · `create_event` ·
+`update_event` · `delete_event`
 
-```
-export npm_config_arch=x64 # If you are on an M1 / Apple Silicon Mac
+Tracking tools: `get_message_tracking` · `list_tracked_messages` · `get_top_links`
+
+`search_mail` takes a Gmail-ish query language — `from:` `to:` `subject:` `in:<folder role>`
+`is:unread|read|starred|unstarred` `has:attachment` `since:` `before:` `after:`, combined with
+`AND`, `OR`, `NOT` and parentheses. Folder matching is by provider-agnostic **role**, so
+`in:sent` works whether the provider calls it `Sent Mail` or `Odeslaná pošta`.
+
+### Calendar as a real surface
+
+The calendar opens as a sheet in the main window instead of hiding in a separate mode, and it is
+**writable through MCP** — including recurrence rules, with `scope: this | all` so an agent can
+edit one occurrence without rewriting the series. `list_events` returns expanded occurrences,
+one row per instance.
+
+### Smart Inbox
+
+Mail is bucketed by sender, and the buckets are remembered. A card above the thread list offers
+to file each new sender the first time it appears, one decision per sender rather than a rules
+engine to maintain. Buckets and drafts nest under each account's inbox in the sidebar.
+
+### Runs properly on Windows
+
+The upstream project is happiest on macOS. Fixed here: renderer sandboxing, GPU staying alive,
+mailbox sharing between processes, protocol path and MIME resolution, the unpackaged app icon,
+Gmail accounts that failed to add when SMTP died after IMAP login, and mailsync refusing to
+start behind a local TLS interceptor.
+
+### No account, no subscription
+
+Onboarding goes straight to adding your mailbox. No product ID, no subscription step, no
+promotional signature appended to your sent mail.
+
+### Demon theme
+
+Dark purple, a restyled folder sidebar, roomier thread rows with rounded selection, and a
+rounded reading pane.
+
+## Getting started
+
+```bash
 npm install
 npm start
 ```
 
-You can attach command line parameters by separating them using a double hyphen:
+Other useful scripts: `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`.
 
-```
-npm start -- --help
-```
+To connect an agent: open **Preferences → MCP**, pick an access level, choose which accounts are
+exposed, and use the one-click setup to generate the client configuration.
 
-### Building Mailspring
+## Status
 
-To build Mailspring, you need to run the following command from the root directory
-of the Mailspring repository:
+Personal project, used daily. The MCP server, smart inbox, calendar sheet and Windows fixes are
+in active use; expect rough edges elsewhere.
 
-```
-npm run-script build
-```
+## Licence
 
-### Building A Plugin
-
-Plugins lie at the heart of Mailspring and give it its powerful features.
-Building your own plugins allows you to integrate the app with other tools,
-experiment with new workflows, and more. Follow the [Getting Started
-guide](https://Foundry376.github.io/Mailspring/) to write your first plugin in
-five minutes.
-
-- To create your own theme, check out the
-  [Mailspring-Theme-Starter](https://github.com/Foundry376/Mailspring-Theme-Starter).
-
-- To create your own plugin, check out the
-  [Mailspring-Plugin-Starter](https://github.com/Foundry376/Mailspring-Plugin-Starter).
-
-A plugin "store" like the Chrome Web Store is coming soon, and will make it
-easy for other users to discover plugins you create. (Right now, users need to
-"sideload" the plugins into the app by downloading them and copying them into
-place.)
-
-You can share and browse Mailspring Plugins, and discuss plugin development
-with other developers, on our
-[Discourse](https://community.getmailspring.com/).
-
-### Building a Theme
-
-The Mailspring user interface is styled using CSS, which means it's easy to
-modify and extend. Mailspring comes stock with a few beautiful themes, and
-there are many more which have been built by community developers. To start
-creating a theme, [clone the theme starter](https://github.com/Foundry376/Mailspring-Theme-Starter)!
-
-If you are updating an existing Nylas theme for Mailspring here is a
-[step by step tutorial](https://community.getmailspring.com/t/updating-an-n1-nylas-mail-theme-for-mailspring/195).
-Notice: as part of the update process you will probably need to [import mailspring base variables](https://github.com/Foundry376/Mailspring/issues/326#issuecomment-343757775).
-
-You can share and browse Mailspring Themes, and discuss theme development with other developers, on our [Discourse](https://community.getmailspring.com/).
-
-### Localizing / Translating
-
-Mailspring (1.5.0 and above) supports localization. If you're a fluent speaker of
-another language, we'd love your help improving translations. Check out the
-[LOCALIZATION](https://github.com/Foundry376/Mailspring/blob/master/LOCALIZATION.md)
-guide for more information. You can discuss localization and translation with
-other developers on our [Discourse](https://community.getmailspring.com/).
-
-### Contributing to Mailspring Core
-
-Pull requests are always welcome - check out
-[CONTRIBUTING](https://github.com/Foundry376/Mailspring/blob/master/CONTRIBUTING.md)
-for more information about setting up the development environment, running
-tests locally, and submitting pull requests.
+GPL-3.0, inherited from the upstream project this is forked from. See [LICENSE.md](LICENSE.md).
