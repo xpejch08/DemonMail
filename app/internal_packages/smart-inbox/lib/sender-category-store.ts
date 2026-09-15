@@ -97,8 +97,18 @@ class SenderCategoryStore extends MailspringStore {
     }
   }
 
-  _onDatabaseChanged = (record: DatabaseChangeRecord<Message>) => {
-    if (record.type !== 'persist' || record.objectClass !== Message.name) {
+  _onDatabaseChanged = (record: DatabaseChangeRecord<Message | Thread>) => {
+    if (record.type !== 'persist') {
+      return;
+    }
+    if (record.objectClass === Thread.name) {
+      const unreadInbox = (record.objects as Thread[]).filter((t) => t.unread && isInboxThread(t));
+      if (unreadInbox.length > 0) {
+        this._applyToInboxThreads(unreadInbox);
+      }
+      return;
+    }
+    if (record.objectClass !== Message.name) {
       return;
     }
     const newIds = record.objectsRawJSON
@@ -112,9 +122,6 @@ class SenderCategoryStore extends MailspringStore {
     );
     if (newMessages.length === 0) {
       return;
-    }
-    for (const message of newMessages) {
-      this._processedIds.add(message.id);
     }
     this._classifyMessages(newMessages);
   };
@@ -206,12 +213,14 @@ class SenderCategoryStore extends MailspringStore {
     for (const message of messages) {
       const result = classifyMessage(message, this);
       if (!result) {
+        this._processedIds.add(message.id);
         continue;
       }
       const thread = await DatabaseStore.find<Thread>(Thread, message.threadId);
       if (!thread || !isInboxThread(thread)) {
         continue;
       }
+      this._processedIds.add(message.id);
       if (!result.pending) {
         pushStamp(toStamp, result.bucket, thread);
         continue;

@@ -8,7 +8,7 @@ export function activate() {
   senderCategoryStore.activate();
   ExtensionRegistry.AccountSidebar.register(AccountSidebarExtension);
   ComponentRegistry.register(NewSenderNotification, {
-    location: WorkspaceStore.Location.ThreadList,
+    location: WorkspaceStore.Sheet.Global.Footer,
   });
   ComponentRegistry.register(FileSmartInboxButton, { role: 'ThreadActionsToolbarButton' });
 }

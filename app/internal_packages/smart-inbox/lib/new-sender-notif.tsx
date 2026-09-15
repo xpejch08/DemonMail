@@ -1,5 +1,5 @@
 import React from 'react';
-import { localized } from 'mailspring-exports';
+import { localized, WorkspaceStore } from 'mailspring-exports';
 import { senderCategoryStore, PendingSender } from './sender-category-store';
 import { SmartInboxBucket } from '../../../src/flux/models/smart-inbox';
 
@@ -28,6 +28,7 @@ export default class NewSenderNotification extends React.Component<
   static containerRequired = false;
 
   unlisten: () => void;
+  unlistenWorkspace: () => void;
 
   constructor(props) {
     super(props);
@@ -38,10 +39,12 @@ export default class NewSenderNotification extends React.Component<
     this.unlisten = senderCategoryStore.listen(() =>
       this.setState({ pending: senderCategoryStore.pending() })
     );
+    this.unlistenWorkspace = WorkspaceStore.listen(() => this.forceUpdate());
   }
 
   componentWillUnmount() {
     this.unlisten();
+    this.unlistenWorkspace();
   }
 
   _onChoose = (bucket: SmartInboxBucket, rememberDomain: boolean) => {
@@ -53,6 +56,9 @@ export default class NewSenderNotification extends React.Component<
   };
 
   render() {
+    if (WorkspaceStore.topSheet()?.id === 'Calendar') {
+      return <span />;
+    }
     const current = this.state.pending[0];
     if (!current) {
       return <span />;
